@@ -47,7 +47,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         # tasks for game development
 
         # She decides to try it out. 
-        from nodework import Graph
+        from nodework import Graph, node
 
         # Then she initialises a Graph
         graph = Graph()
@@ -55,7 +55,7 @@ class TestGraphsAndNodes(unittest.TestCase):
 
         # She wants to make a simple node that copies
         # a file from one folder to another
-        @graph.node
+        @node
         def copy_file(content):
             content.copy = True
             return content
@@ -63,22 +63,37 @@ class TestGraphsAndNodes(unittest.TestCase):
 
         # Now she tries to run the graph, but it raises
         # an error because she hasn't set inputs/outputs
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(TypeError):
             graph.run()
 
-
-        # So she sets an input and tries again
-        graph.input = TEST_INPUTS
+        # So she sets an output and tries again
+        graph.output = TEST_OUTPUTS
 
         # The error is persistent because she needs to set
-        # an output as well
-        with self.assertRaises(RuntimeError):
+        # an input as well
+        with self.assertRaises(TypeError):
             graph.run()
 
-        # She sets an output and runs again
-        graph.output = TEST_OUTPUTS
+        # So she sets an input and tries again, unfortunately
+        # She has a typo in her path and it does not exist.
+        graph.input = 'tests_inputz'
+        with self.assertRaises(FileNotFoundError):
+            graph.run()
+
+        # She corrects her typo
+        graph.input = TEST_INPUTS
+
+        # Now it runs,         
         graph.run()
 
+        # but it doesn't seem to work, because
+        # she hasn't connected her copy_file node to the graph.
+        graph.connect(copy_file)
+
+        # She runs it again,
+        graph.run()
+
+        # And it all seems to work!
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
 
 

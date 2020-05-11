@@ -1,1 +1,1 @@
-from .nodework import Graph, Content
+from .nodework import Graph, Content, node

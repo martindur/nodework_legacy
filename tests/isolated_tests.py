@@ -23,83 +23,129 @@ class TestNodeCreation(unittest.TestCase):
 
 
     def test_content_is_Content_class_with_node_decorator(self):
-        from nodework import Content
-        graph = self.get_graph_object()
+        from nodework import Content, node
 
-        @graph.node
+        @node
         def test_node(content):
             self.assertIsInstance(content, Content)
 
-        test_node(graph)
+        test_node()
 
 
     def test_content_has_copy_attribute(self):
-        graph = self.get_graph_object()
+        from nodework import node
 
-        @graph.node
+        @node
         def test_node(content):
             self.assertTrue(hasattr(content, 'copy'))
 
-        test_node(graph)
+        test_node()
 
 
     def test_content_copy_is_bool_type(self):
-        graph = self.get_graph_object()
+        from nodework import node
 
-        @graph.node
+        @node
         def test_node(content):
             self.assertIsInstance(content.copy, bool)
 
-        test_node(graph)
+        test_node()
 
 
     def test_content_returns_Content_object(self):
-        from nodework import Content
-        graph = self.get_graph_object()
+        from nodework import Content, node
 
-        @graph.node
+        @node
         def test_node(content):
             return content
+
+        get_content = test_node()
 
         self.assertIsInstance(get_content, Content)
 
 
+    def test_input_path_is_not_none_when_graph_run(self):
+        from nodework import Graph
+        graph = Graph()
+        graph.output = 'test_outputs'
+
+        with self.assertRaises(TypeError):
+            graph.run()
+
+
+    def test_output_path_is_not_none_when_graph_run(self):
+        from nodework import Graph
+        graph = Graph()
+        graph.input = 'test_inputs'
+
+        with self.assertRaises(TypeError):
+            graph.run()
+
+
+    def test_input_path_exists_when_graph_run(self):
+        from nodework import Graph
+        graph = Graph()
+        graph.output = 'test_outputs'
+        graph.input = 'testsss_inputz'
+
+        with self.assertRaises(FileNotFoundError):
+            graph.run()
+
+
+
+    def test_graph_can_connect_input_and_output_to_node(self):
+        from nodework import Graph, node
+        graph = self.get_graph_object()
+
+        @node
+        def test_node(content):
+            return content
+
+        graph.connect(test_node)
+
+        self.assertEqual(test_node, graph.entryNode.nodes[0].node)
+        self.assertEqual(test_node, graph.nodes[0].node)
+        self.assertEqual(graph.exitNode, graph.nodes[0].nodes[0])
+
+
+    def test_graph_can_connect_multiple_nodes(self):
+        from nodework import Graph, node
+        graph = self.get_graph_object()
+
+        @node
+        def node_one(content):
+            return content
+
+        @node
+        def node_two(content):
+            return content
+
+        graph.connect(node_one, node_two)
+
+        self.assertEqual(node_one, graph.entryNode.nodes[0].node)
+        self.assertEqual(node_one, graph.nodes[0].node)
+        self.assertEqual(node_two, graph.nodes[1].node)
+        self.assertEqual(node_two, graph.nodes[0].nodes[0].node)
+        self.assertEqual(graph.exitNode, graph.nodes[1].nodes[0])
+
+
+    # This will probably be useful
     @unittest.skip
-    def test_content_nodein_is_Nodein_class(self):
-        from nodework import Nodein
+    def test_output_path_created_if_not_existing(self):
+        pass
+
+
+    # Need to find a good way of writing this test isolated.
+    @unittest.skip
+    def test_run_can_copy_file_from_input_to_output(self):
         graph = self.get_graph_object()
 
         @graph.node
         def test_node(content):
-            self.assertTrue(isinstance(content.nodein, Nodein))
-
-        test_node(graph)
-
-
-    @unittest.skip
-    def test_content_nodeout_can_add(self):
-        graph = self.get_graph_object()
-
-        some_path = 'test_inputs/my_file'
-
-        @graph.node
-        def test_node(content):
-            content.nodeout.add(some_path)
-            self.assertEqual(Path('test_inputs/my_file'), content.nodeout[0])
-
-        test_node(graph)
+            content.copy = True
+            return content
 
 
-    @unittest.skip
-    def test_content_nodeout_does_not_take_a_string(self):
-        graph = self.get_graph_object()
-
-        @graph.node
-        def test_node(content):
-            with self.assertRaises(TypeError):
-                content.nodeout.add('Here is a string!')
-
-        test_node(graph)
 
 if __name__ == '__main__':
     unittest.main()
