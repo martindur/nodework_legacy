@@ -2,10 +2,7 @@ import shutil as sh
 from pathlib import Path
 
 class Content:
-
-    def __init__(self):
-        self.copy = True
-
+    pass
 
 
 def node(func):
@@ -18,35 +15,21 @@ def node(func):
 class Node:
 
     def __init__(self):
-        self.nodes = []
+        self.input = None
+        self.output = None
         self.node = None
 
 
 class Graph():
 
     def __init__(self, input_=None, output=None):
-        self.entryNode = Node()
-        self.exitNode = Node()
-
         self.input = input_
         self.output = output
 
-        self.nodes = []
+        self.entryNode = Node()
+        self.exitNode = Node()
 
-
-    def connect(self, *nodes):
-        prev_node = self.entryNode
-        for i, n in enumerate(nodes):
-            node = Node()
-            node.node = n
-            prev_node.nodes.append(node)
-            prev_node = node
-
-            self.nodes.append(node)
-
-            if i == len(nodes)-1:
-                node.nodes.append(self.exitNode)
-
+        self.copy = True
 
 
     def run(self):
@@ -54,5 +37,11 @@ class Graph():
             raise TypeError
 
         if not Path(self.input).exists():
+            print(Path(self.input))
             raise FileNotFoundError
+
+        if self.copy:
+            for f in Path(self.input).iterdir():
+                print('Hi')
+                sh.copyfile(f, Path(self.output) / f.name)
 

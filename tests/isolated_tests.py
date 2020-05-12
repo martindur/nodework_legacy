@@ -1,7 +1,11 @@
 import unittest
 import sys
+import os
 from pathlib import Path
 
+
+TEST_INPUTS = Path(__file__).parent / 'test_inputs'
+TEST_OUTPUTS = Path(__file__).parent / 'test_outputs'
 
 
 class TestNodeCreation(unittest.TestCase):
@@ -32,27 +36,7 @@ class TestNodeCreation(unittest.TestCase):
         test_node()
 
 
-    def test_content_has_copy_attribute(self):
-        from nodework import node
-
-        @node
-        def test_node(content):
-            self.assertTrue(hasattr(content, 'copy'))
-
-        test_node()
-
-
-    def test_content_copy_is_bool_type(self):
-        from nodework import node
-
-        @node
-        def test_node(content):
-            self.assertIsInstance(content.copy, bool)
-
-        test_node()
-
-
-    def test_content_returns_Content_object(self):
+    def test_node_returns_Content_object(self):
         from nodework import Content, node
 
         @node
@@ -67,7 +51,7 @@ class TestNodeCreation(unittest.TestCase):
     def test_input_path_is_not_none_when_graph_run(self):
         from nodework import Graph
         graph = Graph()
-        graph.output = 'test_outputs'
+        graph.output = TEST_OUTPUTS
 
         with self.assertRaises(TypeError):
             graph.run()
@@ -76,7 +60,7 @@ class TestNodeCreation(unittest.TestCase):
     def test_output_path_is_not_none_when_graph_run(self):
         from nodework import Graph
         graph = Graph()
-        graph.input = 'test_inputs'
+        graph.input = TEST_INPUTS
 
         with self.assertRaises(TypeError):
             graph.run()
@@ -85,48 +69,30 @@ class TestNodeCreation(unittest.TestCase):
     def test_input_path_exists_when_graph_run(self):
         from nodework import Graph
         graph = Graph()
-        graph.output = 'test_outputs'
+        graph.output = TEST_OUTPUTS
         graph.input = 'testsss_inputz'
 
         with self.assertRaises(FileNotFoundError):
             graph.run()
 
 
+    def test_output_node_copies_file_from_input_path(self):
+        from nodework import Graph
+        graph = Graph()
+        graph.input = TEST_INPUTS
+        graph.output = TEST_OUTPUTS
 
-    def test_graph_can_connect_input_and_output_to_node(self):
-        from nodework import Graph, node
-        graph = self.get_graph_object()
+        with open(f'{TEST_INPUTS}/file', 'w') as f:
+            print("file created.")
 
-        @node
-        def test_node(content):
-            return content
+        graph.run()
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
 
-        graph.connect(test_node)
+        if os.path.exists(f'{TEST_OUTPUTS}/file'):
+            os.remove(f'{TEST_OUTPUTS}/file')
 
-        self.assertEqual(test_node, graph.entryNode.nodes[0].node)
-        self.assertEqual(test_node, graph.nodes[0].node)
-        self.assertEqual(graph.exitNode, graph.nodes[0].nodes[0])
+        os.remove(f'{TEST_INPUTS}/file')
 
-
-    def test_graph_can_connect_multiple_nodes(self):
-        from nodework import Graph, node
-        graph = self.get_graph_object()
-
-        @node
-        def node_one(content):
-            return content
-
-        @node
-        def node_two(content):
-            return content
-
-        graph.connect(node_one, node_two)
-
-        self.assertEqual(node_one, graph.entryNode.nodes[0].node)
-        self.assertEqual(node_one, graph.nodes[0].node)
-        self.assertEqual(node_two, graph.nodes[1].node)
-        self.assertEqual(node_two, graph.nodes[0].nodes[0].node)
-        self.assertEqual(graph.exitNode, graph.nodes[1].nodes[0])
 
 
     # This will probably be useful

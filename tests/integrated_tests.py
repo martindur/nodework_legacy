@@ -21,7 +21,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         sys.path.remove(str(module_path.absolute()))
         os.remove(f'{TEST_INPUTS}/file')
         if os.path.exists(f'{TEST_OUTPUTS}/file'):
-            os.remove(f'{TEST_OUTPUTS}')
+            os.remove(f'{TEST_OUTPUTS}/file')
 
 
     def add_test_images(self):
@@ -47,18 +47,17 @@ class TestGraphsAndNodes(unittest.TestCase):
         # tasks for game development
 
         # She decides to try it out. 
-        from nodework import Graph, node
+        from nodework import Graph
 
         # Then she initialises a Graph
         graph = Graph()
 
 
         # She wants to make a simple node that copies
-        # a file from one folder to another
-        @node
-        def copy_file(content):
-            content.copy = True
-            return content
+        # a file from one folder to another. However
+        # this can simply be done through the graph.
+        graph.copy = True
+        self.assertTrue(graph.copy)
 
 
         # Now she tries to run the graph, but it raises
@@ -83,15 +82,9 @@ class TestGraphsAndNodes(unittest.TestCase):
         # She corrects her typo
         graph.input = TEST_INPUTS
 
-        # Now it runs,         
+        # Now it runs
         graph.run()
 
-        # but it doesn't seem to work, because
-        # she hasn't connected her copy_file node to the graph.
-        graph.connect(copy_file)
-
-        # She runs it again,
-        graph.run()
 
         # And it all seems to work!
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
