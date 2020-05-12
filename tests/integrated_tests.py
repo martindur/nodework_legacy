@@ -19,9 +19,10 @@ class TestGraphsAndNodes(unittest.TestCase):
     def tearDown(self):
         module_path = Path(__file__).parent.parent
         sys.path.remove(str(module_path.absolute()))
-        os.remove(f'{TEST_INPUTS}/file')
-        if os.path.exists(f'{TEST_OUTPUTS}/file'):
-            os.remove(f'{TEST_OUTPUTS}/file')
+        for f in TEST_INPUTS.rglob('*'):
+            os.remove(f)
+        for f in TEST_OUTPUTS.rglob('*'):
+            os.remove(f)
 
 
     def add_test_images(self):
@@ -41,7 +42,7 @@ class TestGraphsAndNodes(unittest.TestCase):
             im.unlink()
 
 
-    def test_create_node_that_can_move_a_file(self):
+    def test_create_node_that_can_copy_a_file(self):
         # Gwen heard about this really cool framework
         # that handles common pipeline and automation
         # tasks for game development
@@ -88,6 +89,34 @@ class TestGraphsAndNodes(unittest.TestCase):
 
         # And it all seems to work!
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
+
+
+    def test_create_node_that_adds_suffix_to_files(self):
+        # Gwen has an idea for handling images, but
+        # before that, she wants to try out how
+        # manipulating files with nodes works first.
+
+        from nodework import Graph, node
+
+        # She initialises a Graph with input/output
+        graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
+
+        # She creates a node that adds a 'hello' suffix to the
+        # name of all input files.
+        @node
+        def suffix(content):
+            for f in content:
+                f.rename(f.parent / f'{f.stem}_hello')
+
+            return content
+
+        # She connects the node
+        graph.connect(suffix)
+
+        # And runs the graph
+        graph.run()
+
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file_hello'))
 
 
     @unittest.skip

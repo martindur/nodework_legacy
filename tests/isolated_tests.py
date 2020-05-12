@@ -20,10 +20,23 @@ class TestNodeCreation(unittest.TestCase):
         module_path = Path(__file__).parent.parent
         sys.path.remove(str(module_path.absolute()))
 
+        for f in Path(TEST_INPUTS).iterdir():
+            print(f'Removing "{f}"')
+            os.remove(f)
+
+        for f in Path(TEST_OUTPUTS).iterdir():
+            print(f'Removing "{f}"')
+            os.remove(f)
+
+
+    def create_file(self, path):
+        with open(path, 'w') as f:
+            print(f'file "{path}" created.')
+
 
     def get_graph_object(self):
         from nodework import Graph
-        return Graph(input_='test_inputs', output='test_outputs')
+        return Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
 
 
     def test_content_is_Content_class_with_node_decorator(self):
@@ -82,17 +95,79 @@ class TestNodeCreation(unittest.TestCase):
         graph.input = TEST_INPUTS
         graph.output = TEST_OUTPUTS
 
-        with open(f'{TEST_INPUTS}/file', 'w') as f:
-            print("file created.")
+
+        self.create_file(f'{TEST_INPUTS}/file')
 
         graph.run()
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
 
-        if os.path.exists(f'{TEST_OUTPUTS}/file'):
-            os.remove(f'{TEST_OUTPUTS}/file')
 
-        os.remove(f'{TEST_INPUTS}/file')
+    def test_entry_node_is_first_element_in_nodes(self):
+        from nodework import Graph
+        graph = self.get_graph_object()
 
+        self.assertEqual(graph.entryNode, graph.nodes[0])
+
+
+    def test_exit_node_is_last_element_in_nodes(self):
+        from nodework import Graph
+        graph = self.get_graph_object()
+
+        self.assertEqual(graph.exitNode, graph.nodes[-1])
+
+
+    def test_can_connect_node_to_input_and_output(self):
+        from nodework import Graph, node
+        graph = self.get_graph_object()
+
+        @node
+        def some_node(content):
+            return content
+
+        graph.connect(some_node)
+        graph.run()
+        self.assertEqual(some_node, graph.nodes[1].work)
+
+
+    def test_content_is_iterable(self):
+        from nodework import Content
+
+        self.create_file(TEST_INPUTS / 'file')
+
+        content = Content()
+        content.active_dir = TEST_INPUTS
+        self.assertEqual(content.active_dir, TEST_INPUTS)
+        print("Content is iterable")
+
+        for f in content:
+            self.assertEqual(f.name, 'file')
+
+
+    def test_content_files_have_stem(self):
+        from nodework import Content
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+
+        content = Content()
+        content.active_dir = TEST_INPUTS
+
+        for f in content:
+            self.assertEqual(f.stem, 'file')
+
+
+    def test_content_files_can_rename(self):
+        from nodework import Content
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+
+        content = Content()
+        content.active_dir = TEST_INPUTS
+
+        for f in content:
+            f.rename(f.parent / f'{f.stem}_hello{f.suffix}')
+
+        for f in content:
+            self.assertEqual(f.name, 'file_hello.txt')
 
 
     # This will probably be useful
