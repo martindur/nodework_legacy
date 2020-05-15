@@ -1,4 +1,5 @@
 import shutil as sh
+import os
 from pathlib import Path
 
 class Content:
@@ -10,6 +11,9 @@ class Content:
         if Path(self.active_dir).exists():
             return iter(Path(self.active_dir).iterdir())
 
+    def __contains__(self, file):
+        return file in Path(self.active_dir).iterdir()
+
 
 def node(func):
     def decorator():
@@ -20,44 +24,53 @@ def node(func):
 
 class Node:
 
-    def __init__(self):
-        self.input = None
-        self.output = None
-        self.work = None
+    def __init__(self, work=None):
+        self.work = work
+        self.next = None
 
 
-class Graph():
+class Graph:
 
-    def __init__(self, input=None, output=None):
+    def __init__(self, input, output=None):
         self.input = input
         self.output = output
-        self.nodes = []
-
-        self.entryNode = Node()
-        self.exitNode = Node()
-
+        self.content = Content(active_dir=self.input)
+        self.head = None
         self.copy = True
 
-        self.nodes.append(self.entryNode)
-        self.nodes.append(self.exitNode)
+
+    def node(self, func):
+        def decorator(graph=None):
+            return func(self.content)
+        return decorator
 
 
-    def connect(self, work):
-        node = Node()
-        node.work = work
-        self.nodes.append(node)
-        self.nodes.append(self.nodes.pop(self.nodes.index(self.entryNode)))
+    def connect(self, *workers):
+        nodes = []
+        for work in workers:
+            nodes.append(Node(work=work))
+        for i, node in enumerate(nodes):
+            if i == 0:
+                self.head = node
+
+            if i == len(workers)-1:
+                return
+            node.next = nodes[i+1]
 
 
     def run(self):
-        if self.input is None or self.output is None:
-            raise TypeError
-
         if not Path(self.input).exists():
-            print(Path(self.input))
             raise FileNotFoundError
 
-        if self.copy:
-            for f in Path(self.input).iterdir():
-                sh.copyfile(f, Path(self.output) / f.name)
+        active_node = self.head
+        while active_node is not None:
+            active_node.work()
+            active_node = active_node.next
+
+        if self.output is not None:
+            if not Path(self.output).exists():
+                raise FileNotFoundError
+            if self.copy:
+                for f in Path(self.content.active_dir).iterdir():
+                    sh.copyfile(f, Path(self.output) / f.name)
 

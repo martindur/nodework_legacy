@@ -30,7 +30,7 @@ class TestGraphsAndNodes(unittest.TestCase):
 
         for i in range(5):
             r = 128 * i+1
-            im = Image().new('RGBA', (r, r), color=(140, 140, 120, 255))
+            im = Image.new('RGBA', (r, r), color=(140, 140, 120, 255))
             im.save(f'{TEST_INPUTS}/{i}', "PNG")
 
 
@@ -51,7 +51,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         from nodework import Graph
 
         # Then she initialises a Graph
-        graph = Graph()
+        graph = Graph(input=TEST_INPUTS)
 
 
         # She wants to make a simple node that copies
@@ -61,18 +61,9 @@ class TestGraphsAndNodes(unittest.TestCase):
         self.assertTrue(graph.copy)
 
 
-        # Now she tries to run the graph, but it raises
-        # an error because she hasn't set inputs/outputs
-        with self.assertRaises(TypeError):
-            graph.run()
-
         # So she sets an output and tries again
         graph.output = TEST_OUTPUTS
 
-        # The error is persistent because she needs to set
-        # an input as well
-        with self.assertRaises(TypeError):
-            graph.run()
 
         # So she sets an input and tries again, unfortunately
         # She has a typo in her path and it does not exist.
@@ -96,19 +87,17 @@ class TestGraphsAndNodes(unittest.TestCase):
         # before that, she wants to try out how
         # manipulating files with nodes works first.
 
-        from nodework import Graph, node
+        from nodework import Graph
 
         # She initialises a Graph with input/output
         graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
 
         # She creates a node that adds a 'hello' suffix to the
         # name of all input files.
-        @node
+        @graph.node
         def suffix(content):
             for f in content:
                 f.rename(f.parent / f'{f.stem}_hello')
-
-            return content
 
         # She connects the node
         graph.connect(suffix)
@@ -127,7 +116,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         from nodework import Graph
 
         # She initialises a Graph with input/output
-        graph = Graph(input_=TEST_INPUTS, output=TEST_OUTPUTS)
+        graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
 
         # She has an idea, that she will create a node which
         # handles 'png' image files, and adds a suffix to the

@@ -40,50 +40,33 @@ class TestNodeCreation(unittest.TestCase):
 
 
     def test_content_is_Content_class_with_node_decorator(self):
-        from nodework import Content, node
+        from nodework import Content, Graph
+        graph = self.get_graph_object()
 
-        @node
+        @graph.node
         def test_node(content):
             self.assertIsInstance(content, Content)
 
-        test_node()
+        test_node(graph)
 
 
     def test_node_returns_Content_object(self):
-        from nodework import Content, node
+        from nodework import Content, Graph
+        graph = self.get_graph_object()
 
-        @node
+        @graph.node
         def test_node(content):
             return content
 
-        get_content = test_node()
+        get_content = test_node(graph)
 
         self.assertIsInstance(get_content, Content)
 
 
-    def test_input_path_is_not_none_when_graph_run(self):
-        from nodework import Graph
-        graph = Graph()
-        graph.output = TEST_OUTPUTS
-
-        with self.assertRaises(TypeError):
-            graph.run()
-
-
-    def test_output_path_is_not_none_when_graph_run(self):
-        from nodework import Graph
-        graph = Graph()
-        graph.input = TEST_INPUTS
-
-        with self.assertRaises(TypeError):
-            graph.run()
-
-
     def test_input_path_exists_when_graph_run(self):
         from nodework import Graph
-        graph = Graph()
+        graph = Graph(input='testsss_inputz')
         graph.output = TEST_OUTPUTS
-        graph.input = 'testsss_inputz'
 
         with self.assertRaises(FileNotFoundError):
             graph.run()
@@ -91,8 +74,7 @@ class TestNodeCreation(unittest.TestCase):
 
     def test_output_node_copies_file_from_input_path(self):
         from nodework import Graph
-        graph = Graph()
-        graph.input = TEST_INPUTS
+        graph = Graph(input=TEST_INPUTS)
         graph.output = TEST_OUTPUTS
 
 
@@ -102,31 +84,17 @@ class TestNodeCreation(unittest.TestCase):
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file'))
 
 
-    def test_entry_node_is_first_element_in_nodes(self):
-        from nodework import Graph
-        graph = self.get_graph_object()
-
-        self.assertEqual(graph.entryNode, graph.nodes[0])
-
-
-    def test_exit_node_is_last_element_in_nodes(self):
-        from nodework import Graph
-        graph = self.get_graph_object()
-
-        self.assertEqual(graph.exitNode, graph.nodes[-1])
-
-
     def test_can_connect_node_to_input_and_output(self):
-        from nodework import Graph, node
+        from nodework import Graph
         graph = self.get_graph_object()
 
-        @node
+        @graph.node
         def some_node(content):
             return content
 
         graph.connect(some_node)
         graph.run()
-        self.assertEqual(some_node, graph.nodes[1].work)
+        self.assertEqual(some_node, graph.head.work)
 
 
     def test_content_is_iterable(self):
@@ -137,7 +105,6 @@ class TestNodeCreation(unittest.TestCase):
         content = Content()
         content.active_dir = TEST_INPUTS
         self.assertEqual(content.active_dir, TEST_INPUTS)
-        print("Content is iterable")
 
         for f in content:
             self.assertEqual(f.name, 'file')
@@ -168,6 +135,28 @@ class TestNodeCreation(unittest.TestCase):
 
         for f in content:
             self.assertEqual(f.name, 'file_hello.txt')
+
+
+    def test_node_connection_receives_correct_content(self):
+        from nodework import Graph
+        graph = self.get_graph_object()
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+
+        @graph.node
+        def node_a(content):
+            for f in content:
+                f.rename(f.parent / f'{f.stem}.py')
+
+        @graph.node
+        def node_b(content):
+            self.assertIn(TEST_INPUTS / 'file.py', content)
+
+
+        graph.connect(node_a, node_b)
+        self.assertEqual(node_a, graph.head.work)
+        self.assertEqual(node_b, graph.head.next.work)
+        graph.run()
 
 
     # This will probably be useful
