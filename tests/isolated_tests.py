@@ -159,6 +159,84 @@ class TestNodeCreation(unittest.TestCase):
         graph.run()
 
 
+    def test_content_only_copies_certain_file_types(self):
+        from nodework import Graph
+        graph = self.get_graph_object()
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+        self.create_file(TEST_INPUTS / 'image.png')
+
+        @graph.node
+        def copy_img(content):
+            content.file_types = ['png']
+
+        graph.connect(copy_img)
+        graph.run()
+
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'image.png'))
+        self.assertFalse(os.path.exists(TEST_OUTPUTS / 'file.txt'))
+
+
+    def test_content_only_iterates_certain_file_types(self):
+        from nodework import Graph
+        graph = self.get_graph_object()
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+        self.create_file(TEST_INPUTS / 'image.png')
+
+        @graph.node
+        def rename_img(content):
+            for img in content.types('png'):
+                img.rename(img.parent / f'{img.stem}_newname{img.suffix}')
+
+        graph.connect(rename_img)
+        graph.run()
+
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'image_newname.png'))
+        self.assertFalse(os.path.exists(TEST_OUTPUTS / 'file_newname.txt'))
+
+
+    def test_imagehandler_can_open_image_and_returns_imagehandler_type(self):
+        from nodework.handlers import ImageHandler
+        from PIL import Image
+
+        image = Image.new('RGB', (256, 256), color=(0,0,0))
+        image.save(TEST_INPUTS / 'image.png')
+
+        img = ImageHandler.open(TEST_INPUTS / 'image.png')
+
+        self.assertIsInstance(img, ImageHandler)
+
+
+    def test_imagehandler_can_scale_image(self):
+        from nodework.handlers import ImageHandler
+        from PIL import Image
+
+        image = Image.new('RGB', (256, 256), color=(0,0,0))
+        image.save(TEST_INPUTS / 'image.png')
+
+        img = ImageHandler.open(TEST_INPUTS / 'image.png')
+
+        img.scale((128, 128))
+
+
+        self.assertEqual(img.pil_image.size, (128, 128))
+
+
+    def test_imagehandler_can_save_image(self):
+        from nodework.handlers import ImageHandler
+        from PIL import Image
+
+        image = Image.new('RGB', (256, 256), color=(0,0,0))
+        image.save(TEST_INPUTS / 'image.png')
+
+        img = ImageHandler.open(TEST_INPUTS / 'image.png')
+
+        img.save(TEST_OUTPUTS / 'new_image.png')
+
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'new_image.png'))
+
+
     # This will probably be useful
     @unittest.skip
     def test_output_path_created_if_not_existing(self):

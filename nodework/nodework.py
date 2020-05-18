@@ -5,21 +5,41 @@ from pathlib import Path
 class Content:
 
     def __init__(self, active_dir=None):
-        self.active_dir = active_dir
+        if active_dir is not None:
+            self._active_dir = Path(active_dir)
+        else:
+            self._active_dir = None
+        self.file_types = []
 
     def __iter__(self):
-        if Path(self.active_dir).exists():
-            return iter(Path(self.active_dir).iterdir())
+        if self.active_dir.exists():
+            if len(self.file_types) > 0:
+                files = []
+                for ext in self.file_types:
+                    files.extend(self.active_dir.glob(f'*.{ext}'))
+                return iter(files)
+            return iter(self.active_dir.iterdir())
 
     def __contains__(self, file):
-        return file in Path(self.active_dir).iterdir()
+        return file in self.active_dir.iterdir()
 
 
-def node(func):
-    def decorator():
-        content = Content()
-        return func(content)
-    return decorator
+    @property
+    def active_dir(self):
+        return Path(self._active_dir)
+
+
+    @active_dir.setter
+    def active_dir(self, new_dir):
+        self._active_dir = Path(new_dir)
+
+
+    def types(self, *suffixes):
+        files = []
+        for ext in suffixes:
+            files.extend(self.active_dir.glob(f'*.{ext}'))
+        return iter(files)
+
 
 
 class Node:
@@ -71,6 +91,11 @@ class Graph:
             if not Path(self.output).exists():
                 raise FileNotFoundError
             if self.copy:
-                for f in Path(self.content.active_dir).iterdir():
-                    sh.copyfile(f, Path(self.output) / f.name)
+                if len(self.content.file_types) == 0:
+                    for f in self.content.active_dir.iterdir():
+                        sh.copyfile(f, Path(self.output) / f.name)
+                else:
+                    for ext in self.content.file_types:
+                        for f in self.content.active_dir.glob(f'*.{ext}'):
+                            sh.copyfile(f, Path(self.output) / f.name)
 

@@ -29,9 +29,9 @@ class TestGraphsAndNodes(unittest.TestCase):
         from PIL import Image
 
         for i in range(5):
-            r = 128 * i+1
+            r = 128 * (i+1)
             im = Image.new('RGBA', (r, r), color=(140, 140, 120, 255))
-            im.save(f'{TEST_INPUTS}/{i}', "PNG")
+            im.save(f'{TEST_INPUTS}/{i+1}.png', "PNG")
 
 
     def remove_test_images(self):
@@ -108,7 +108,6 @@ class TestGraphsAndNodes(unittest.TestCase):
         self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/file_hello'))
 
 
-    @unittest.skip
     def test_create_node_that_adds_suffix_to_image_files(self):
         # Gwen thinks she's ready for an adventure.
         # More specifically, a suffixicated adventure!
@@ -127,69 +126,76 @@ class TestGraphsAndNodes(unittest.TestCase):
         from PIL import Image
 
         # She adds some images to use for testing
+        # 5 images of variating size:
+        # 1.png at 128x128, 2.png at 256x256, 3.png at 384x384,
+        # 4.png at 512x512, 5.png at 640x640
         self.add_test_images()
 
         # Now she gets cracking on writing the node function
-        @graph.node(input=['png'])
+        @graph.node
         def resolution_suffix(content):
             for f in content:
-                width, height = Image(f).size
-                new_stem = f'{f.stem}_{width}x{height}'
-                f.stem = new_stem
-                f.save()
+                if f.suffix == '.png':
+                    width, height = Image.open(f).size
+                    f.rename(f.parent / f'{f.stem}_{width}x{height}{f.suffix}')
 
-            return content
-
-
-
-
-    @unittest.skip
-    def test_create_node_that_handles_image_scaling_and_run_it(self):
-        # Gwen heard about this really cool framework
-        # that handles common pipeline and automation
-        # tasks for game development
-
-        # She decides to try it out. 
-        from nodework import Graph, Nodes
-        # She figures out that she also needs some
-        # helper methods
-        from nodework.image import Image
-
-
-        # She initialises a Graph with a common
-        # name. She doesn't know which kind of graph 
-        # she is building yet, so she'll let it be
-        # a generic graph for now. Alternatively she
-        # could use a name that encapsulates what
-        # kind of nodes exist in the graph.
-        graph = Graph()
-        nodes = Nodes()
-
-
-        # Now she decides to make an initial simple
-        # node that takes an image of a certain size,
-        # and outputs 3 variants at different sizes,
-        # with different names. 
-        @nodes.node(nodein=['png'], nodeout=['png'])
-        def create_img_variants():
-            for img in nodein.content:
-                square, thumbnail, icon = Image(img)
-                square.scale((512, 512), no_stretch=True)
-                thumbnail.scale((1024, 800), no_stretch=True)
-                icon.scale((64, 64), no_stretch=True)
-                nodeout.add(square)
-                nodeout.add(thumbnail)
-                nodeout.add(icon)
-
-
-        # After having created her node, she
-        # wants to give it a spin through the
-        # graph
-        graph.input = f'{TEST_INPUTS}'
-        graph.output = f'{TEST_OUTPUTS}'
-
+        # Connects the node, and runs
+        graph.connect(resolution_suffix)
         graph.run()
 
+        for f in Path(TEST_OUTPUTS).iterdir():
+            print(f)
+
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/1_128x128.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/2_256x256.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/3_384x384.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/4_512x512.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/5_640x640.png'))
+
+
+
+
+
+
+    def test_create_node_that_handles_image_scaling_and_run_it(self):
+        from nodework import Graph
+        # She figures out that she also needs the
+        # ImageHandler to simplify operations with
+        # images.
+        from nodework.image import Image
+        from nodework.handlers import ImageHandler
+
+
+        # She initialises a Graph
+        graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
+
+
+        # Now she decides to make a node that takes 
+        # an image of a certain size,
+        # and outputs 3 variants at different sizes,
+        # with different names. 
+        @graph.node
+        def create_img_variants(content):
+            new_dir = content.active_dir / 'scaled_images'
+            for img in content.types(['png']):
+                square, thumbnail, icon = ImageHandler.open(img)
+                square.scale((512, 512))
+                thumbnail.scale((256, 128))
+                icon.scale((64, 64))
+
+                square.save(new_dir)
+                thumbnail.save(new_dir)
+                icon.save(new_dir)
+
+            content.active_dir = new_dir
+
+
+        # She connects and runs it
+        graph.connect(create_img_variants)
+        graph.run()
+
+
+        # Expecting to see a total of 15 images in the output
         images_dir = Path().glob(f'{TEST_OUTPUTS}/*.png')
         images = [im for im in images_dir]
         self.assertEqual(15, len(images))
