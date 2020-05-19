@@ -9,15 +9,9 @@ class Content:
             self._active_dir = Path(active_dir)
         else:
             self._active_dir = None
-        self.file_types = []
 
     def __iter__(self):
         if self.active_dir.exists():
-            if len(self.file_types) > 0:
-                files = []
-                for ext in self.file_types:
-                    files.extend(self.active_dir.glob(f'*.{ext}'))
-                return iter(files)
             return iter(self.active_dir.iterdir())
         else:
             raise FileExistsError
@@ -34,6 +28,11 @@ class Content:
     @active_dir.setter
     def active_dir(self, new_dir):
         self._active_dir = Path(new_dir)
+
+
+    @staticmethod
+    def copy(*args, **kwargs):
+        sh.copy(*args, **kwargs)
 
 
     def types(self, *suffixes):
@@ -62,11 +61,28 @@ class Node:
 class Graph:
 
     def __init__(self, input, output=None):
-        self.input = input
-        self.output = output
+        self._input = Path(input)
+        if output is not None:
+            self._output = Path(output)
         self.content = Content(active_dir=self.input)
         self.head = None
-        self.copy = True
+
+
+    @property
+    def input(self):
+        return self._input
+
+    @input.setter
+    def input(self, new_input):
+        self._input = Path(new_input)
+
+    @property
+    def output(self):
+        return self._output
+
+    @output.setter
+    def output(self, new_output):
+        self._output = Path(new_output)
 
 
     def node(self, func):
@@ -89,8 +105,8 @@ class Graph:
 
 
     def run(self):
-        if not Path(self.input).exists():
-            raise FileNotFoundError
+        if not self.input.exists():
+            raise FileExistsError
 
         active_node = self.head
         while active_node is not None:
@@ -98,14 +114,10 @@ class Graph:
             active_node = active_node.next
 
         if self.output is not None:
-            if not Path(self.output).exists():
-                raise FileNotFoundError
-            if self.copy:
-                if len(self.content.file_types) == 0:
-                    for f in self.content.active_dir.iterdir():
-                        sh.copyfile(f, Path(self.output) / f.name)
+            if not self.output.exists():
+                raise FileExistsError
+            for f in self.content.active_dir.iterdir():
+                if f.is_dir():
+                    sh.copytree(f, self.output / f.name)
                 else:
-                    for ext in self.content.file_types:
-                        for f in self.content.active_dir.glob(f'*.{ext}'):
-                            sh.copyfile(f, Path(self.output) / f.name)
-
+                    sh.copy(f, self.output / f.name)

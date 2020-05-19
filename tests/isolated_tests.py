@@ -1,4 +1,5 @@
 import unittest
+import shutil
 import sys
 import os
 from pathlib import Path
@@ -14,24 +15,21 @@ class TestNodeCreation(unittest.TestCase):
     def setUp(self):
         module_path = Path(__file__).parent.parent
         sys.path.append(str(module_path.absolute()))
+        TEST_INPUTS.mkdir()
+        TEST_OUTPUTS.mkdir()
 
 
     def tearDown(self):
         module_path = Path(__file__).parent.parent
         sys.path.remove(str(module_path.absolute()))
+        shutil.rmtree(TEST_INPUTS)
+        shutil.rmtree(TEST_OUTPUTS)
 
-        for f in Path(TEST_INPUTS).iterdir():
-            print(f'Removing "{f}"')
-            os.remove(f)
-
-        for f in Path(TEST_OUTPUTS).iterdir():
-            print(f'Removing "{f}"')
-            os.remove(f)
 
 
     def create_file(self, path):
         with open(path, 'w') as f:
-            print(f'file "{path}" created.')
+            pass
 
 
     def get_graph_object(self):
@@ -68,7 +66,7 @@ class TestNodeCreation(unittest.TestCase):
         graph = Graph(input='testsss_inputz')
         graph.output = TEST_OUTPUTS
 
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(FileExistsError):
             graph.run()
 
 
@@ -137,6 +135,20 @@ class TestNodeCreation(unittest.TestCase):
             self.assertEqual(f.name, 'file_hello.txt')
 
 
+    def test_content_class_can_copy_file(self):
+        from nodework import Content
+
+        self.create_file(TEST_INPUTS / 'file.txt')
+        new_dir = TEST_INPUTS / 'copy_here'
+        new_dir.mkdir()
+
+        content = Content()
+        content.active_dir = TEST_INPUTS
+        content.copy(TEST_INPUTS / 'file.txt', new_dir)
+
+        self.assertTrue(os.path.exists(TEST_INPUTS / 'copy_here' / 'file.txt'))
+
+
     def test_node_connection_receives_correct_content(self):
         from nodework import Graph
         graph = self.get_graph_object()
@@ -157,24 +169,6 @@ class TestNodeCreation(unittest.TestCase):
         self.assertEqual(node_a, graph.head.work)
         self.assertEqual(node_b, graph.head.next.work)
         graph.run()
-
-
-    def test_content_only_copies_certain_file_types(self):
-        from nodework import Graph
-        graph = self.get_graph_object()
-
-        self.create_file(TEST_INPUTS / 'file.txt')
-        self.create_file(TEST_INPUTS / 'image.png')
-
-        @graph.node
-        def copy_img(content):
-            content.file_types = ['png']
-
-        graph.connect(copy_img)
-        graph.run()
-
-        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'image.png'))
-        self.assertFalse(os.path.exists(TEST_OUTPUTS / 'file.txt'))
 
 
     def test_content_only_iterates_certain_file_types(self):
@@ -250,6 +244,7 @@ class TestNodeCreation(unittest.TestCase):
         img.save(TEST_OUTPUTS / 'new_image.png')
 
         self.assertTrue(os.path.exists(TEST_OUTPUTS / 'new_image.png'))
+
 
 
     # This will probably be useful

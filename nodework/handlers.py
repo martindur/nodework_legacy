@@ -12,6 +12,11 @@ class ImageHandler:
         return ImageHandler(image)
 
 
+    @property
+    def size(self):
+        return self.pil_image.size
+
+
     def scale(self, size):
         w, h = size
         cur_w, cur_h = self.pil_image.size

@@ -70,7 +70,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         # So she sets an input and tries again, unfortunately
         # She has a typo in her path and it does not exist.
         graph.input = 'tests_inputz'
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(FileExistsError):
             graph.run()
 
         # She corrects her typo
@@ -181,9 +181,9 @@ class TestGraphsAndNodes(unittest.TestCase):
                 thumbnail = ImageHandler.open(img)
                 icon = ImageHandler.open(img)
 
-                square.scale((512, 512))
-                thumbnail.scale((256, 128))
-                icon.scale((64, 64))
+                square.scale((64, 64))
+                thumbnail.scale((64, 32))
+                icon.scale((16, 16))
 
                 square.save(new_dir / f'{img.stem}_square{img.suffix}')
                 thumbnail.save(new_dir / f'{img.stem}_thumbnail{img.suffix}')
@@ -203,6 +203,59 @@ class TestGraphsAndNodes(unittest.TestCase):
         for im in images:
             print(im)
         self.assertEqual(15, len(images))
+
+
+    def test_multiple_nodes_connected_renaming_and_scaling(self):
+        from nodework import Graph
+        from nodework.handlers import ImageHandler
+
+        # She decides to try out doing things a bit more
+        # modular, by splitting out small tasks between
+        # the nodes.
+
+        graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
+        self.add_test_images()
+
+        @graph.node
+        def copy_images(content):
+            img_dir = content.mkdir('images')
+            for f in content.types('png'):
+                content.copy(f, img_dir)
+
+            content.active_dir = img_dir
+
+        @graph.node
+        def rename_images(content):
+            for f in content:
+                im = ImageHandler.open(f)
+                f.replace(f.with_name(f'{f.stem}_{im.size[0]}x{im.size[1]}{f.suffix}'))
+
+        @graph.node
+        def extract_thumbnails(content):
+            thumbs_dir = content.mkdir('thumbs')
+            for f in content.types('png'):
+                im = ImageHandler.open(f)
+                im.scale((16, 16))
+                im.save(thumbs_dir / f'{f.stem}_thumb.png')
+
+
+        graph.connect(copy_images, rename_images, extract_thumbnails)
+        graph.run()
+
+        self.assertTrue(os.path.exists(TEST_INPUTS / 'images'))
+        self.assertTrue(os.path.exists(TEST_INPUTS / 'images' / '1_64x64.png'))
+
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'thumbs'))
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / '1_64x64.png'))
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / '2_128x128.png'))
+        thumbnails_dir = Path().glob(f'{TEST_OUTPUTS}/thumbs/*.png')
+        thumbnails = [im for im in thumbnails_dir]
+        self.assertEqual(5, len(thumbnails))
+        self.assertTrue(os.path.exists(TEST_OUTPUTS / 'thumbs' / '1_64x64_thumb.png'))
+        im = ImageHandler.open(thumbnails[0])
+        self.assertEqual(im.size, (16, 16))
+
+
 
 
 if __name__ == '__main__':
