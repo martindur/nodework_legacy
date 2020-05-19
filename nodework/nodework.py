@@ -19,6 +19,8 @@ class Content:
                     files.extend(self.active_dir.glob(f'*.{ext}'))
                 return iter(files)
             return iter(self.active_dir.iterdir())
+        else:
+            raise FileExistsError
 
     def __contains__(self, file):
         return file in self.active_dir.iterdir()
@@ -39,6 +41,14 @@ class Content:
         for ext in suffixes:
             files.extend(self.active_dir.glob(f'*.{ext}'))
         return iter(files)
+
+
+    def mkdir(self, dir_name):
+        if Path(self.active_dir / dir_name).exists():
+            return self.active_dir / dir_name
+        relative_dir = self.active_dir / dir_name
+        relative_dir.mkdir(parents=True)
+        return relative_dir
 
 
 

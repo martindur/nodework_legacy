@@ -208,7 +208,7 @@ class TestNodeCreation(unittest.TestCase):
         self.assertIsInstance(img, ImageHandler)
 
 
-    def test_imagehandler_can_scale_image(self):
+    def test_imagehandler_can_scale_square_image(self):
         from nodework.handlers import ImageHandler
         from PIL import Image
 
@@ -221,6 +221,21 @@ class TestNodeCreation(unittest.TestCase):
 
 
         self.assertEqual(img.pil_image.size, (128, 128))
+
+
+    def test_imagehandler_can_scale_rect_image(self):
+        from nodework.handlers import ImageHandler
+        from PIL import Image
+
+        image = Image.new('RGB', (800, 300), color=(0,0,0))
+        image.save(TEST_INPUTS / 'image.png')
+
+        img = ImageHandler.open(TEST_INPUTS / 'image.png')
+
+        img.scale((256, 256))
+
+
+        self.assertEqual(img.pil_image.size, (256, 256))
 
 
     def test_imagehandler_can_save_image(self):

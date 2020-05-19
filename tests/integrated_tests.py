@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 from pathlib import Path
 import unittest
 
@@ -13,23 +14,24 @@ class TestGraphsAndNodes(unittest.TestCase):
     def setUp(self):
         module_path = Path(__file__).parent.parent
         sys.path.append(str(module_path.absolute()))
+        TEST_INPUTS.mkdir(parents=True)
+        TEST_OUTPUTS.mkdir(parents=True)
         with open(f'{TEST_INPUTS}/file', 'w') as f:
             print("File created.")
 
     def tearDown(self):
         module_path = Path(__file__).parent.parent
         sys.path.remove(str(module_path.absolute()))
-        for f in TEST_INPUTS.rglob('*'):
-            os.remove(f)
-        for f in TEST_OUTPUTS.rglob('*'):
-            os.remove(f)
+        shutil.rmtree(TEST_INPUTS)
+        shutil.rmtree(TEST_OUTPUTS)
+
 
 
     def add_test_images(self):
         from PIL import Image
 
         for i in range(5):
-            r = 128 * (i+1)
+            r = 64 * (i+1)
             im = Image.new('RGBA', (r, r), color=(140, 140, 120, 255))
             im.save(f'{TEST_INPUTS}/{i+1}.png', "PNG")
 
@@ -97,7 +99,8 @@ class TestGraphsAndNodes(unittest.TestCase):
         @graph.node
         def suffix(content):
             for f in content:
-                f.rename(f.parent / f'{f.stem}_hello')
+                if f.is_file():
+                    f.rename(f.parent / f'{f.stem}_hello')
 
         # She connects the node
         graph.connect(suffix)
@@ -126,9 +129,7 @@ class TestGraphsAndNodes(unittest.TestCase):
         from PIL import Image
 
         # She adds some images to use for testing
-        # 5 images of variating size:
-        # 1.png at 128x128, 2.png at 256x256, 3.png at 384x384,
-        # 4.png at 512x512, 5.png at 640x640
+        # 5 images of variating size
         self.add_test_images()
 
         # Now she gets cracking on writing the node function
@@ -136,21 +137,20 @@ class TestGraphsAndNodes(unittest.TestCase):
         def resolution_suffix(content):
             for f in content:
                 if f.suffix == '.png':
-                    width, height = Image.open(f).size
+                    im = Image.open(f)
+                    width, height = im.size
                     f.rename(f.parent / f'{f.stem}_{width}x{height}{f.suffix}')
 
         # Connects the node, and runs
         graph.connect(resolution_suffix)
         graph.run()
 
-        for f in Path(TEST_OUTPUTS).iterdir():
-            print(f)
 
-        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/1_128x128.png'))
-        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/2_256x256.png'))
-        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/3_384x384.png'))
-        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/4_512x512.png'))
-        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/5_640x640.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/1_64x64.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/2_128x128.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/3_192x192.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/4_256x256.png'))
+        self.assertTrue(os.path.exists(f'{TEST_OUTPUTS}/5_320x320.png'))
 
 
 
@@ -162,13 +162,12 @@ class TestGraphsAndNodes(unittest.TestCase):
         # She figures out that she also needs the
         # ImageHandler to simplify operations with
         # images.
-        from nodework.image import Image
         from nodework.handlers import ImageHandler
 
 
         # She initialises a Graph
         graph = Graph(input=TEST_INPUTS, output=TEST_OUTPUTS)
-
+        self.add_test_images()
 
         # Now she decides to make a node that takes 
         # an image of a certain size,
@@ -176,16 +175,19 @@ class TestGraphsAndNodes(unittest.TestCase):
         # with different names. 
         @graph.node
         def create_img_variants(content):
-            new_dir = content.active_dir / 'scaled_images'
-            for img in content.types(['png']):
-                square, thumbnail, icon = ImageHandler.open(img)
+            new_dir = content.mkdir('scaled_images')
+            for img in content.types('png'):
+                square = ImageHandler.open(img)
+                thumbnail = ImageHandler.open(img)
+                icon = ImageHandler.open(img)
+
                 square.scale((512, 512))
                 thumbnail.scale((256, 128))
                 icon.scale((64, 64))
 
-                square.save(new_dir)
-                thumbnail.save(new_dir)
-                icon.save(new_dir)
+                square.save(new_dir / f'{img.stem}_square{img.suffix}')
+                thumbnail.save(new_dir / f'{img.stem}_thumbnail{img.suffix}')
+                icon.save(new_dir / f'{img.stem}_icon{img.suffix}')
 
             content.active_dir = new_dir
 
@@ -198,6 +200,8 @@ class TestGraphsAndNodes(unittest.TestCase):
         # Expecting to see a total of 15 images in the output
         images_dir = Path().glob(f'{TEST_OUTPUTS}/*.png')
         images = [im for im in images_dir]
+        for im in images:
+            print(im)
         self.assertEqual(15, len(images))
 
 

@@ -18,9 +18,9 @@ class ImageHandler:
         scalar = max(w/cur_w, h/cur_h)
         self.pil_image.thumbnail((cur_w*scalar, cur_h*scalar))
         cur_w, cur_h = self.pil_image.size
-        box = ((cur_w/2) - (w/2), (cur_h/2) + (h/2),
-               (cur_w/2) + (w/2), (cur_h/2) - (h/2))
-        self.pil_image.crop(box)
+        box = ((cur_w/2) - (w/2), (cur_h/2) - (h/2),
+               (cur_w/2) + (w/2), (cur_h/2) + (h/2))
+        self.pil_image = self.pil_image.crop(box)
 
 
     def save(self, *args, **kwargs):
