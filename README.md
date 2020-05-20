@@ -31,3 +31,9 @@ graph.connect(copy_images, rename_images)
 if __name__ == '__main__':
     graph.run()
 ```
+
+In this example I created a graph with a node that iterates over '.png' files from the Graph input folder and copies those files to a newly created 'images' folder. The next node then gets the resolution from each image with the ImageHandler, and adds the resolution to the file name. Lastly they are connected in the graph, and run.
+
+## In-depth description
+
+using the node decorator gives a function access to the content object. That object is essentially what gets passed around in a graph, between nodes. The content is essentially a pathlib Path object wrapped with some extended functionalities. One of the key uses is to change the active_dir. Any node that is currently running, will process the active_dir. In the example above, the rename_images node is processing the newly made 'images' dir, which is a subdirectory to the previous active_dir. When you create a new directory, it is by default relative to the current active_dir. This increases modularity, and you could fit multiple graphs together, or move a network of graphs to a whole other system.
