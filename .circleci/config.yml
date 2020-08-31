@@ -12,10 +12,10 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: ./isolated_tests.py
+          command: python tests/isolated_tests.py
           name: test_isolated
       - run:
-          command: ./integrated_tests.py
+          command: python tests/integrated_tests.py
           name: test_integrated
 
 workflows:
